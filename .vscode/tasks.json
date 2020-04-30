@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "C/C++: Emit LLVM IR",
+			"command": "clang",
+			"args": [
+				"-S",
+				"-emit-llvm",
+				"-fno-discard-value-names",
+				"${fileBasename}",
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		}
+	]
+}
