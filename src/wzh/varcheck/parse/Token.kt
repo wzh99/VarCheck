@@ -20,7 +20,7 @@ internal class Token(val loc: Location, val tag: TokenTag, val str: String) {
         }
     }
 
-    val name
+    val strNoPrefix
         get() = when (tag) {
             TokenTag.GLOBAL_ID, TokenTag.LOCAL_ID -> str.substring(1)
             else -> str

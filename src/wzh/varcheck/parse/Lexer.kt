@@ -26,7 +26,7 @@ class Lexer(path: String) {
         src = String(bytes, StandardCharsets.UTF_8)
     }
 
-    internal fun nextToken(): Token {
+    internal fun next(): Token {
         // Initialize fields for lexing
         buf = StringBuilder()
         tag = null

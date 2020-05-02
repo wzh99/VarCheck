@@ -41,19 +41,19 @@ class Parser(private val lexer: Lexer) {
     private fun parseParamList(): ParamList {
         val loc = loc
         expect(TokenTag.LEFT_ROUND)
-        val list = ArrayList<ParamDef>()
+        val list = ArrayList<TypedOperand>()
         loop@ while (true) {
             when (peek(0).tag) {
                 TokenTag.RIGHT_ROUND -> {
                     read()
                     break@loop
                 }
-                TokenTag.RESERVED -> list.add(parseParamDef())
+                TokenTag.RESERVED -> list.add(parseTypedOperand())
                 TokenTag.COMMA -> if (list.isEmpty())
                     throw error(arrayOf(TokenTag.RIGHT_ROUND, TokenTag.RESERVED), peek(0))
                 else {
                     read()
-                    list.add(parseParamDef())
+                    list.add(parseTypedOperand())
                 }
                 else -> {
                     var expected = arrayOf(TokenTag.RIGHT_ROUND, TokenTag.RESERVED)
@@ -63,13 +63,6 @@ class Parser(private val lexer: Lexer) {
             }
         }
         return ParamList(loc, list)
-    }
-
-    private fun parseParamDef(): ParamDef {
-        val loc = loc
-        val type = parseTypeDef()
-        val name = expect(TokenTag.LOCAL_ID)
-        return ParamDef(loc, type, name)
     }
 
     private fun parseFuncBody(): FuncBody {
@@ -252,7 +245,7 @@ class Parser(private val lexer: Lexer) {
         read() // `br`
         if (peek(0).tag != TokenTag.RESERVED)
             throw error(arrayOf(TokenTag.RESERVED), peek(0))
-        return if (peek(0).name == "label") { // direct jump
+        return if (peek(0).strNoPrefix == "label") { // direct jump
             read() // `label`
             val label = expect(TokenTag.LOCAL_ID)
             BrInst(loc, null, label, null)
@@ -287,7 +280,7 @@ class Parser(private val lexer: Lexer) {
         return TypedOperand(loc, type, value)
     }
 
-    private fun parseTypeDef(): TypeDef {
+    private fun parseTypeDef(): TypeDecl {
         if (peek(0).tag == TokenTag.RESERVED) { // primitive types appear as reserved words
             val type = parsePrimType()
             return if (peek(0).tag == TokenTag.ASTERISK) parsePtrType(type) else type
@@ -295,16 +288,16 @@ class Parser(private val lexer: Lexer) {
             throw error(arrayOf(TokenTag.RESERVED), peek(0))
     }
 
-    private fun parsePrimType(): PrimType {
+    private fun parsePrimType(): PrimTypeDecl {
         val loc = loc
         val name = read()
-        return PrimType(loc, name)
+        return PrimTypeDecl(loc, name)
     }
 
-    private fun parsePtrType(target: TypeDef): PtrType {
+    private fun parsePtrType(target: TypeDecl): PtrTypeDecl {
         val loc = target.loc
         expect(TokenTag.ASTERISK)
-        return PtrType(loc, target)
+        return PtrTypeDecl(loc, target)
     }
 
     private fun readOperand(): Token {
@@ -330,7 +323,7 @@ class Parser(private val lexer: Lexer) {
 
     // Read one token from stream, move cursor one step.
     private fun read(): Token {
-        val tok = if (buf.isEmpty()) lexer.nextToken() else buf.removeAt(0)
+        val tok = if (buf.isEmpty()) lexer.next() else buf.removeAt(0)
         loc = peek(0).loc
         return tok
     }
@@ -338,7 +331,7 @@ class Parser(private val lexer: Lexer) {
     // Look ahead a token of a given index in the stream.
     private fun peek(idx: Int): Token {
         if (idx >= buf.size)
-            for (k in 0..idx - buf.size) buf.add(lexer.nextToken())
+            for (k in 0..idx - buf.size) buf.add(lexer.next())
         return buf[idx]
     }
 

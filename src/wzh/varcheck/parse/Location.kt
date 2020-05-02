@@ -1,8 +1,8 @@
 package wzh.varcheck.parse
 
-class Location (val line: Int, val column: Int) : Cloneable {
+class Location(val line: Int, val column: Int) : Cloneable {
 
-    constructor() : this(0, 0 )
+    constructor() : this(0, 0)
 
     internal fun newLine(): Location {
         return Location(line + 1, 0)
