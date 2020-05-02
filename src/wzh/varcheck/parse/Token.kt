@@ -53,6 +53,5 @@ internal enum class TokenTag {
     RIGHT_ROUND,  // )
     LEFT_CURLY,  // {
     RIGHT_CURLY,  // }
-    NEW_LINE, // \n
     EOF
 }

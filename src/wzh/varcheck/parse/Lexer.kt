@@ -79,15 +79,7 @@ class Lexer(path: String) {
                         ')' -> return createFromTag(TokenTag.RIGHT_ROUND)
                         '{' -> return createFromTag(TokenTag.LEFT_CURLY)
                         '}' -> return createFromTag(TokenTag.RIGHT_CURLY)
-                        '\n' -> {
-                            val tok = createFromTag(TokenTag.NEW_LINE)
-                            if (tok.loc.column == 0) { // empty line
-                                clear()
-                                continue@loop
-                            } else
-                                return tok
-                        }
-                        ' ', '\r', '\t' -> {
+                        ' ', '\n', '\r', '\t' -> {
                             skip()
                             continue@loop
                         }
@@ -131,7 +123,6 @@ class Lexer(path: String) {
     // Create a token from buffer content
     private fun createFromBuffer(): Token {
         val str = buf.toString()
-        buf.clear()
         return Token(Location(loc.line, loc.column - str.length), tag!!, str)
     }
 

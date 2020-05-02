@@ -18,7 +18,7 @@ class Parser(private val lexer: Lexer) {
                 )
             }
         }
-        return Module(func)
+        return ModuleDef(func)
     }
 
     private fun parseFuncDef(): FuncDef {
@@ -49,17 +49,15 @@ class Parser(private val lexer: Lexer) {
                     break@loop
                 }
                 TokenTag.RESERVED -> list.add(parseParamDef())
-                TokenTag.COMMA -> if (list.size > 0) {
+                TokenTag.COMMA -> if (list.isEmpty())
+                    throw error(arrayOf(TokenTag.RIGHT_ROUND, TokenTag.RESERVED), peek(0))
+                else {
                     read()
                     list.add(parseParamDef())
-                } else throw error(
-                        arrayOf(Token(TokenTag.RIGHT_ROUND), Token(TokenTag.RESERVED)),
-                        peek(0)
-                )
+                }
                 else -> {
-                    var expected = arrayOf(Token(TokenTag.RIGHT_ROUND),
-                            Token(TokenTag.RESERVED))
-                    if (list.size > 0) expected += Token(TokenTag.COMMA)
+                    var expected = arrayOf(TokenTag.RIGHT_ROUND, TokenTag.RESERVED)
+                    if (list.isNotEmpty()) expected += TokenTag.COMMA
                     throw error(expected, peek(0))
                 }
             }
@@ -75,7 +73,218 @@ class Parser(private val lexer: Lexer) {
     }
 
     private fun parseFuncBody(): FuncBody {
-        throw RuntimeException()
+        // Begin function body
+        val loc = loc
+        expect(TokenTag.LEFT_CURLY)
+
+        // Parse all basic blocks
+        val block = ArrayList<BlockDef>()
+        loop@ while (true) {
+            when (peek(0).tag) {
+                TokenTag.RESERVED -> block.add(parseBlockDef())
+                TokenTag.RIGHT_CURLY -> if (block.isEmpty())
+                    throw error(arrayOf(TokenTag.RESERVED), peek(0))
+                else
+                    break@loop
+                else -> {
+                    var expected = arrayOf(TokenTag.RESERVED)
+                    if (block.isNotEmpty()) expected += TokenTag.RIGHT_CURLY
+                    throw error(expected, peek(0))
+                }
+            }
+        }
+
+        // End function body
+        expect(TokenTag.RIGHT_CURLY)
+        return FuncBody(loc, block)
+    }
+
+    private fun parseBlockDef(): BlockDef {
+        // Parse label
+        val loc = loc
+        val label = expect(TokenTag.RESERVED)
+        expect(TokenTag.COLON)
+
+        // Parse instructions inside basic block
+        val inst = ArrayList<InstDef>()
+        loop@ while (true) {
+            when (peek(0).tag) {
+                TokenTag.LOCAL_ID -> inst.add(parseInstDef())
+                TokenTag.RESERVED -> if (peek(1).tag == TokenTag.COLON)
+                    break@loop // a new block encountered
+                else
+                    inst.add(parseInstDef()) // another instruction in this block
+                TokenTag.RIGHT_CURLY -> if (inst.isEmpty())
+                    throw error(arrayOf(TokenTag.LOCAL_ID, TokenTag.RESERVED), peek(0))
+                else
+                    break@loop // end of this function
+                else -> {
+                    var expected = arrayOf(TokenTag.LOCAL_ID, TokenTag.RESERVED)
+                    if (inst.isNotEmpty()) expected += TokenTag.RIGHT_CURLY
+                    throw error(expected, peek(0))
+                }
+            }
+        }
+
+        return BlockDef(loc, label, inst)
+    }
+
+    private fun parseInstDef(): InstDef {
+        return when (peek(0).tag) {
+            TokenTag.LOCAL_ID -> parseAssignInst()
+            TokenTag.RESERVED -> when (peek(0).str) {
+                "br" -> parseBrInst()
+                "ret" -> parseRetInst()
+                "store" -> parseStoreInst()
+                else -> throw ParseError(peek(0).loc,
+                        "Unrecognized instruction ${peek(0).str}."
+                )
+            }
+            else -> throw error(arrayOf(TokenTag.LOCAL_ID, TokenTag.RESERVED), peek(0))
+        }
+    }
+
+    private fun parseAssignInst(): AssignInst {
+        val loc = loc
+        val lhs = expect(TokenTag.LOCAL_ID)
+        expect(TokenTag.EQUAL)
+        val rhs = parseRhsExpr()
+        return AssignInst(loc, lhs, rhs)
+    }
+
+    private fun parseRhsExpr(): RhsExpr {
+        if (peek(0).tag != TokenTag.RESERVED)
+            throw error(arrayOf(TokenTag.RESERVED), peek(0))
+        return when (peek(0).str) {
+            "alloca" -> parseAllocaExpr()
+            "load" -> parseLoadExpr()
+            "call" -> parseCallExpr()
+            "icmp" -> parseICmpExpr()
+            else -> parseBinaryExpr()
+        }
+    }
+
+    private fun parseAllocaExpr(): AllocaExpr {
+        val loc = loc
+        read() // `alloca`
+        val type = parsePrimType() // only primitive type is considered here
+        expect(TokenTag.COMMA)
+        expect(Token(TokenTag.RESERVED, "align")) // just scan, alignment is not needed
+        expect(TokenTag.DIGITS)
+        return AllocaExpr(loc, type)
+    }
+
+    private fun parseLoadExpr(): LoadExpr {
+        val loc = loc
+        read() // `load`
+        val type = parsePrimType()
+        expect(TokenTag.COMMA)
+        val src = parseTypedOperand()
+        expect(TokenTag.COMMA)
+        expect(Token(TokenTag.RESERVED, "align"))
+        expect(TokenTag.DIGITS)
+        return LoadExpr(loc, type, src)
+    }
+
+    private fun parseCallExpr(): CallExpr {
+        // Parse function name and return type
+        val loc = loc
+        read() // `call`
+        val ret = parsePrimType()
+        val func = expect(TokenTag.GLOBAL_ID)
+
+        // Parse arguments
+        expect(TokenTag.LEFT_ROUND)
+        val arg = ArrayList<TypedOperand>()
+        loop@ while (true) {
+            when (peek(0).tag) {
+                TokenTag.RESERVED -> arg.add(parseTypedOperand())
+                TokenTag.COMMA -> if (arg.isEmpty())
+                    throw error(arrayOf(TokenTag.RESERVED, TokenTag.RIGHT_ROUND), peek(0))
+                else {
+                    read()
+                    arg.add(parseTypedOperand())
+                }
+                TokenTag.RIGHT_ROUND -> break@loop
+                else -> {
+                    var expected = arrayOf(TokenTag.RESERVED, TokenTag.RIGHT_ROUND)
+                    if (arg.isNotEmpty()) expected += TokenTag.COMMA
+                    throw error(expected, peek(0))
+                }
+            }
+        }
+        expect(TokenTag.RIGHT_ROUND)
+
+        return CallExpr(loc, ret, func, arg)
+    }
+
+    private fun parseICmpExpr(): ICmpExpr {
+        val loc = loc
+        read() // `icmp`
+        val op = expect(TokenTag.RESERVED)
+        val type = parsePrimType()
+        val lhs = readOperand()
+        expect(TokenTag.COMMA)
+        val rhs = readOperand()
+        return ICmpExpr(loc, op, type, lhs, rhs)
+    }
+
+    private fun parseBinaryExpr(): BinaryExpr {
+        val loc = loc
+        val op = read()
+        expect(TokenTag.RESERVED) // `nsw` / `nuw`
+        val type = parsePrimType()
+        val lhs = readOperand()
+        expect(TokenTag.COMMA)
+        val rhs = readOperand()
+        return BinaryExpr(loc, op, type, lhs, rhs)
+    }
+
+    private fun parseRetInst(): RetInst {
+        val loc = loc
+        read()
+        val value = parseTypedOperand()
+        return RetInst(loc, value)
+    }
+
+    private fun parseBrInst(): BrInst {
+        val loc = loc
+        read() // `br`
+        if (peek(0).tag != TokenTag.RESERVED)
+            throw error(arrayOf(TokenTag.RESERVED), peek(0))
+        return if (peek(0).name == "label") { // direct jump
+            read() // `label`
+            val label = expect(TokenTag.LOCAL_ID)
+            BrInst(loc, null, label, null)
+        } else { // conditional branch
+            val cond = parseTypedOperand()
+            expect(TokenTag.COMMA)
+            expect(Token(TokenTag.RESERVED, "label"))
+            val trueLabel = expect(TokenTag.LOCAL_ID)
+            expect(TokenTag.COMMA)
+            expect(Token(TokenTag.RESERVED, "label"))
+            val falseLabel = expect(TokenTag.LOCAL_ID)
+            BrInst(loc, cond, trueLabel, falseLabel)
+        }
+    }
+
+    private fun parseStoreInst(): StoreInst {
+        val loc = loc
+        read() // `store`
+        val src = parseTypedOperand()
+        expect(TokenTag.COMMA)
+        val dst = parseTypedOperand()
+        expect(TokenTag.COMMA)
+        expect(Token(TokenTag.RESERVED, "align"))
+        expect(TokenTag.DIGITS)
+        return StoreInst(loc, src, dst)
+    }
+
+    private fun parseTypedOperand(): TypedOperand {
+        val loc = loc
+        val type = parseTypeDef()
+        val value = readOperand()
+        return TypedOperand(loc, type, value)
     }
 
     private fun parseTypeDef(): TypeDef {
@@ -83,7 +292,7 @@ class Parser(private val lexer: Lexer) {
             val type = parsePrimType()
             return if (peek(0).tag == TokenTag.ASTERISK) parsePtrType(type) else type
         } else
-            throw error(arrayOf(Token(TokenTag.RESERVED)), peek(0))
+            throw error(arrayOf(TokenTag.RESERVED), peek(0))
     }
 
     private fun parsePrimType(): PrimType {
@@ -94,8 +303,15 @@ class Parser(private val lexer: Lexer) {
 
     private fun parsePtrType(target: TypeDef): PtrType {
         val loc = target.loc
-        expect(Token(TokenTag.ASTERISK))
+        expect(TokenTag.ASTERISK)
         return PtrType(loc, target)
+    }
+
+    private fun readOperand(): Token {
+        val tok = read()
+        if (!tok.isOperand())
+            throw error(arrayOf(TokenTag.LOCAL_ID, TokenTag.DIGITS), tok)
+        return tok
     }
 
     // Read one token and check whether the token is expected.
@@ -132,6 +348,11 @@ class Parser(private val lexer: Lexer) {
             val expectStr = ArrayList<String>()
             expect.mapTo(expectStr, Companion::tokenString)
             return ParseError(got.loc, "Expect ${expectStr}, got ${tokenString(got)}.")
+        }
+
+        private fun error(expected: Array<TokenTag>, got: Token): ParseError {
+            val array = Array(expected.size) { i -> Token(expected[i]) }
+            return error(array, got)
         }
 
         // Translate expected token to its readable output string
