@@ -1,4 +1,4 @@
-package wzh.varcheck.lang
+package wzh.llvm.lang
 
 abstract class Value : Typed {
     abstract override val type: Type

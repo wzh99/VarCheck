@@ -1,4 +1,4 @@
-package wzh.varcheck.parse
+package wzh.llvm.parse
 
 class Parser(private val lexer: Lexer) {
 
@@ -18,7 +18,7 @@ class Parser(private val lexer: Lexer) {
                 )
             }
         }
-        return ModuleDef(func)
+        return ModuleDef(lexer.name, func)
     }
 
     private fun parseFuncDef(): FuncDef {

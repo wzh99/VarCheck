@@ -1,7 +1,6 @@
-package wzh.varcheck.parse
+package wzh.llvm.parse
 
-import wzh.varcheck.lang.*
-import wzh.varcheck.lang.Function
+import wzh.llvm.lang.*
 
 class Builder(node: AstNode) {
 
@@ -10,15 +9,15 @@ class Builder(node: AstNode) {
 
     fun build(): Module {
         val func = ast.func.map(this::visitFunc)
-        return Module(func)
+        return Module(ast.name, func)
     }
 
-    private fun visitFunc(funcDef: FuncDef): Function {
+    private fun visitFunc(funcDef: FuncDef): Func {
         // Build signature
         val sig = funcDef.sig
         val ret = visitType(sig.ret)
         val param = visitParamList(sig.param)
-        val func = Function(sig.name.strNoPrefix, ret, param)
+        val func = Func(sig.name.strNoPrefix, ret, param)
 
         // Map labels to blocks
         val body = funcDef.body
@@ -67,6 +66,7 @@ class Builder(node: AstNode) {
             is LoadExpr -> visitLoadExpr(dst, expr)
             is ICmpExpr -> visitICmpExpr(dst, expr)
             is BinaryExpr -> visitBinaryExpr(dst, expr)
+            is CallExpr -> visitCallExpr(dst, expr)
             else -> error("Unreachable")
         }
     }
@@ -90,7 +90,7 @@ class Builder(node: AstNode) {
         val op = expr.op.str
         val lhs = visitOperand(expr.lhs, type)
         val rhs = visitOperand(expr.rhs, type)
-        return Binary(dst, op, lhs, rhs)
+        return Binary(dst, op, type, lhs, rhs)
     }
 
     private fun visitICmpExpr(dstTok: Token, expr: ICmpExpr): ICmp {
@@ -99,7 +99,15 @@ class Builder(node: AstNode) {
         val op = expr.op.str
         val lhs = visitOperand(expr.lhs, type)
         val rhs = visitOperand(expr.rhs, type)
-        return ICmp(dst, op, lhs, rhs)
+        return ICmp(dst, op, type, lhs, rhs)
+    }
+
+    private fun visitCallExpr(dstTok: Token, expr: CallExpr): Call {
+        val type = visitType(expr.ret)
+        val dst = visitLocalId(dstTok, type)
+        val func = expr.func.strNoPrefix
+        val args = expr.args.map(this::visitTypedOperand)
+        return Call(dst, type, func, args)
     }
 
     private fun visitStoreInst(inst: StoreInst): Store {

@@ -1,13 +1,13 @@
-package wzh.varcheck.parse
+package wzh.llvm.parse
 
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-import java.lang.StringBuilder
 import java.nio.charset.StandardCharsets
 
 class Lexer(path: String) {
 
+    internal val name: String
     private val src: String
     private var ptr = 0
     private var loc = Location()
@@ -17,6 +17,7 @@ class Lexer(path: String) {
     init {
         // Read all characters from file
         val file = File(path)
+        name = file.nameWithoutExtension
         val ifs = FileInputStream(file)
         val len = ifs.available()
         val bytes = ByteArray(len)

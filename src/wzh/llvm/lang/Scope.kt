@@ -1,6 +1,6 @@
-package wzh.varcheck.lang
+package wzh.llvm.lang
 
-class Scope {
+class Scope : Iterable<Symbol> {
     private val list = ArrayList<Symbol>()
     private val index = HashMap<Symbol, Int>()
     private val table = HashMap<String, Symbol>()
@@ -11,14 +11,17 @@ class Scope {
         return table.contains(name)
     }
 
+    // Get symbol of given index
     operator fun get(index: Int): Symbol {
         return list[index]
     }
 
+    // Get index of a given symbol
     operator fun get(symbol: Symbol): Int {
         return index[symbol]!!
     }
 
+    // Get symbol of given name
     operator fun get(name: String): Symbol {
         return table[name]!!
     }
@@ -33,5 +36,9 @@ class Scope {
 
     fun toArray(): Array<Symbol> {
         return Array(list.size) { i -> list[i] }
+    }
+
+    override fun iterator(): Iterator<Symbol> {
+        return list.iterator()
     }
 }

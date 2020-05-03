@@ -1,4 +1,4 @@
-package wzh.varcheck.lang
+package wzh.llvm.lang
 
 abstract class Type {
     abstract override fun equals(other: Any?): Boolean

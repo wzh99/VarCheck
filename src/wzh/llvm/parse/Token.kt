@@ -1,4 +1,4 @@
-package wzh.varcheck.parse
+package wzh.llvm.parse
 
 
 internal class Token(val loc: Location, val tag: TokenTag, val str: String) {

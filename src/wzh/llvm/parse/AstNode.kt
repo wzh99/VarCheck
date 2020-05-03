@@ -1,8 +1,8 @@
-package wzh.varcheck.parse
+package wzh.llvm.parse
 
 open class AstNode(val loc: Location)
 
-internal class ModuleDef(val func: ArrayList<FuncDef>) : AstNode(Location())
+internal class ModuleDef(val name: String, val func: ArrayList<FuncDef>) : AstNode(Location())
 
 internal class FuncDef(loc: Location, val sig: FuncSig, val body: FuncBody) : AstNode(loc)
 

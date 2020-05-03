@@ -1,4 +1,4 @@
-package wzh.varcheck.lang
+package wzh.llvm.lang
 
 class BasicBlock(val name: String) {
 
@@ -10,5 +10,18 @@ class BasicBlock(val name: String) {
         if (succ.contains(to)) return
         succ.add(to)
         to.pred.add(this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is BasicBlock) return false
+        return name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+
+    override fun toString(): String {
+        return "%$name"
     }
 }
