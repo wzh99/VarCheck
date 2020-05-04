@@ -13,9 +13,9 @@ class Symbol(override val type: Type, val name: String) : Value() {
         return name == other.name
     }
 
-    override fun hashCode(): Int { return name.hashCode() }
+    override fun hashCode(): Int = name.hashCode()
 
-    override fun toString(): String { return "%$name" }
+    override fun toString(): String = "%$name"
 }
 
 abstract class Constant(override val type: Type) : Value()
@@ -26,8 +26,8 @@ class I32Const(val value: Int) : Constant(IntegerType(32)) {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int = value.hashCode()
 
-    override fun toString(): String { return value.toString() }
+    override fun toString(): String = value.toString()
 }
 

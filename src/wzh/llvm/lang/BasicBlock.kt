@@ -17,11 +17,7 @@ class BasicBlock(val name: String) {
         return name == other.name
     }
 
-    override fun hashCode(): Int {
-        return name.hashCode()
-    }
+    override fun hashCode() = name.hashCode()
 
-    override fun toString(): String {
-        return "%$name"
-    }
+    override fun toString() = "%$name"
 }

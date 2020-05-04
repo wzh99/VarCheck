@@ -13,11 +13,7 @@ class Func(val name: String, val ret: Type, val param: List<Symbol>)
         for (p in param) scope.add(p)
     }
 
-    override fun iterator(): Iterator<BasicBlock> {
-        return blocks.iterator()
-    }
+    override fun iterator() = blocks.iterator()
 
-    override fun toString(): String {
-        return "$ret @$name(${param.joinToString { p -> "${p.type} $p" }})"
-    }
+    override fun toString() = "$ret @$name(${param.joinToString { p -> "${p.type} $p" }})"
 }

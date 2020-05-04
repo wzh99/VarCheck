@@ -9,9 +9,7 @@ internal class Token(val loc: Location, val tag: TokenTag, val str: String) {
 
     constructor(tag: TokenTag) : this(Location(), tag)
 
-    override fun toString(): String {
-        return "Token{$loc, $tag, $str}"
-    }
+    override fun toString() = "Token{$loc, $tag, $str}"
 
     fun isOperand(): Boolean {
         return when (tag) {

@@ -141,7 +141,7 @@ class Lexer(path: String) {
     }
 
     // Read one character to buffer
-    private fun shift() { buf.append(read()) }
+    private fun shift() = buf.append(read())
 
     // Skip this character without reading it to buffer
     private fun skip() { read() }
@@ -154,9 +154,7 @@ class Lexer(path: String) {
     }
 
     // Look ahead one character in the source. If EOF is reached, return 0
-    private fun peek(): Char {
-        return if (ptr < src.length) src[ptr] else '\u0000'
-    }
+    private fun peek() = if (ptr < src.length) src[ptr] else '\u0000'
 
     // Report lexing error by raising an exception
     @Throws(ParseError::class)

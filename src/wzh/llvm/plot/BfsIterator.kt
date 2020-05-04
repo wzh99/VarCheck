@@ -4,9 +4,6 @@ import wzh.llvm.lang.BasicBlock
 import wzh.llvm.lang.Func
 import java.util.*
 import kotlin.collections.HashSet
-import kotlin.collections.Iterator
-import kotlin.collections.forEach
-import kotlin.collections.isNotEmpty
 
 internal class BfsIterator(func: Func) : Iterator<BlockLevel> {
 
@@ -18,9 +15,7 @@ internal class BfsIterator(func: Func) : Iterator<BlockLevel> {
         visited.add(func.entry)
     }
 
-    override fun hasNext(): Boolean {
-        return queue.isNotEmpty()
-    }
+    override fun hasNext() = queue.isNotEmpty()
 
     override fun next(): BlockLevel {
         val elem = queue.removeFirst()

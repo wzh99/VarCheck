@@ -41,7 +41,7 @@ class Plotter(private val module: Module) {
                 val bb = levels[l][i]
                 val text = bb.inst.map(Instruction::toString) as ArrayList<String>
                 text.add(0, "${bb.name}:")
-                nodes[bb] = FigureNode(l, i, text)
+                nodes[bb] = FigureNode(l, i, nodeName(bb), text)
             }
         }
 
@@ -56,21 +56,22 @@ class Plotter(private val module: Module) {
                 val text = node.text.joinToString("\\\\", transform = Companion::toLaTeX)
                 val str = if (i == 0) { // first node of this level
                     if (l == 0) { // entry node
-                        "\\node[block](${nodeName(bb)}){$text};"
+                        "\\node[block](${node.name}){$text};"
                     } else {
                         val aboveMaxHeightBb = levels[l - 1].maxBy { b -> nodes[b]!!.height }!!
                         val aboveMaxHeight = nodes[aboveMaxHeightBb]!!.height
                         val aboveBb = levels[l - 1][i]
+                        val aboveNode = nodes[aboveBb]!!
                         val dist = 6 * (maxHeight + aboveMaxHeight) + 10
-                        "\\node[block, below of=${nodeName(aboveBb)}, " +
-                                "node distance=${dist}pt](${nodeName(bb)}){$text};"
+                        "\\node[block, below of=${aboveNode.name}, " +
+                                "node distance=${dist}pt](${node.name}){$text};"
                     }
                 } else { // other nodes of this level
                     val leftBb = levels[l][i - 1]
                     val leftNode = nodes[leftBb]!!
-                    val dist = (3 * (node.width + leftNode.width) + 30)
-                    "\\node[block, right of=${nodeName(leftBb)}, node distance=${dist}pt]" +
-                            "(${nodeName(bb)}){$text};"
+                    val dist = (3 * (node.width + leftNode.width) + 20)
+                    "\\node[block, right of=${leftNode.name}, node distance=${dist}pt]" +
+                            "(${node.name}){$text};"
                 }
                 graphDef.append(str + '\n')
             }
@@ -81,25 +82,25 @@ class Plotter(private val module: Module) {
             block.succ.forEach { succ ->
                 val succNode = nodes[succ]!!
                 val str = if (succNode.level > node.level)  // flow to level below
-                    "\\draw[->]({${nodeName(block)}}.south)--({${nodeName(succ)}}.north);"
+                    "\\draw[->]({${node.name}}.south)--({${succNode.name}}.north);"
                 else if (succNode.level == node.level)  // the same level
                     if (succNode.index > node.index) // on right side
-                        "\\draw[->]({${nodeName(block)}}.east)--({${nodeName(succ)}}.west);"
+                        "\\draw[->]({${node.name}}.east)--({${succNode.name}}.west);"
                     else // left side
-                        "\\draw[->]({${nodeName(block)}}.west)--({${nodeName(succ)}}.east);"
+                        "\\draw[->]({${node.name}}.west)--({${succNode.name}}.east);"
                 else// to level above, usually a back edge
                     if (succNode.index > node.index) // flow to top-right corner
-                        "\\draw[->]({${nodeName(block)}}.east)--({${nodeName(succ)}}.west);"
+                        "\\draw[->]({${node.name}}.east)--({${succNode.name}}.west);"
                     else if (succNode.index < node.index) // to top-left corner
-                        "\\draw[->]({${nodeName(block)}}.west)--({${nodeName(succ)}}.east);"
+                        "\\draw[->]({${node.name}}.west)--({${succNode.name}}.east);"
                     else {
                         val ratio = node.index.toFloat() / levels[node.level].size
                         if (ratio < 0.5)
-                            "\\draw[->]({${nodeName(block)}}.west)to[out=180, in=180]" +
-                                    "({${nodeName(succ)}}.west);"
+                            "\\draw[->]({${node.name}}.west)to[out=180, in=180]" +
+                                    "({${succNode.name}}.west);"
                         else
-                            "\\draw[->]({${nodeName(block)}}.east)to[out=0, in=0]" +
-                                    "({${nodeName(succ)}}.east);"
+                            "\\draw[->]({${node.name}}.east)to[out=0, in=0]" +
+                                    "({${succNode.name}}.east);"
                     }
                 graphDef.append(str + '\n')
             }
@@ -113,13 +114,9 @@ class Plotter(private val module: Module) {
     companion object {
         private val ESCAPE_REGEX = Regex("[\\s%]")
 
-        private fun toLaTeX(s: String): String {
-            return s.replace(ESCAPE_REGEX) { m -> "\\" + m.value }
-        }
+        private fun toLaTeX(s: String) = s.replace(ESCAPE_REGEX) { m -> "\\" + m.value }
 
-        private fun nodeName(block: BasicBlock): String {
-            return block.name.replace('.', '_')
-        }
+        private fun nodeName(block: BasicBlock) = block.name.replace('.', '_')
 
         private const val MODULE_INSERT = "@MODULE"
         private const val MODULE_TEMPLATE =
@@ -143,7 +140,8 @@ class Plotter(private val module: Module) {
     }
 }
 
-internal class FigureNode(val level: Int, val index: Int, val text: ArrayList<String>) {
+internal class FigureNode(val level: Int, val index: Int, val name: String,
+                          val text: ArrayList<String>) {
     val width = text.maxBy { s -> s.length }!!.length
     val height: Int get() = text.size + 1
 }

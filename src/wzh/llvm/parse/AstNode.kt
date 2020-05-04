@@ -13,7 +13,8 @@ internal class ParamList(loc: Location, val list: ArrayList<TypedOperand>) : Ast
 
 internal class FuncBody(loc: Location, val blocks: ArrayList<BlockDef>) : AstNode(loc)
 
-internal class BlockDef(loc: Location, val label: Token, val inst: ArrayList<InstDef>) : AstNode(loc)
+internal class BlockDef(loc: Location, val label: Token, val inst: ArrayList<InstDef>)
+    : AstNode(loc)
 
 internal open class InstDef(loc: Location) : AstNode(loc)
 
@@ -23,7 +24,8 @@ internal open class RhsExpr(loc: Location) : AstNode(loc)
 
 internal class AllocaExpr(loc: Location, val type: TypeDecl) : RhsExpr(loc)
 
-internal class LoadExpr(loc: Location, val type: TypeDecl, val src: TypedOperand) : RhsExpr(loc)
+internal class LoadExpr(loc: Location, val type: TypeDecl, val src: TypedOperand)
+    : RhsExpr(loc)
 
 internal class BinaryExpr(loc: Location, val op: Token, val type: PrimTypeDecl, val lhs: Token,
                           val rhs: Token)
@@ -37,14 +39,16 @@ internal class CallExpr(loc: Location, val ret: PrimTypeDecl, val func: Token,
                         val args: ArrayList<TypedOperand>)
     : RhsExpr(loc)
 
-internal class StoreInst(loc: Location, val src: TypedOperand, val dst: TypedOperand) : InstDef(loc)
+internal class StoreInst(loc: Location, val src: TypedOperand, val dst: TypedOperand)
+    : InstDef(loc)
 
 internal class BrInst(loc: Location, val cond: TypedOperand?, val tr: Token, val fls: Token?)
     : InstDef(loc)
 
 internal class RetInst(loc: Location, val value: TypedOperand) : InstDef(loc)
 
-internal class TypedOperand(loc: Location, val type: TypeDecl, val value: Token) : AstNode(loc)
+internal class TypedOperand(loc: Location, val type: TypeDecl, val value: Token)
+    : AstNode(loc)
 
 internal open class TypeDecl(loc: Location) : AstNode(loc)
 

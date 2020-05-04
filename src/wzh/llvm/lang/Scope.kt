@@ -7,24 +7,16 @@ class Scope : Iterable<Symbol> {
 
     val size: Int get() = list.size
 
-    fun contains(name: String): Boolean {
-        return table.contains(name)
-    }
+    fun contains(name: String): Boolean = table.contains(name)
 
     // Get symbol of given index
-    operator fun get(index: Int): Symbol {
-        return list[index]
-    }
+    operator fun get(index: Int): Symbol = list[index]
 
     // Get index of a given symbol
-    operator fun get(symbol: Symbol): Int {
-        return index[symbol]!!
-    }
+    operator fun get(symbol: Symbol): Int = index[symbol]!!
 
     // Get symbol of given name
-    operator fun get(name: String): Symbol {
-        return table[name]!!
-    }
+    operator fun get(name: String): Symbol = table[name]!!
 
     fun add(symbol: Symbol) {
         if (table.containsKey(symbol.name)) return
@@ -34,11 +26,5 @@ class Scope : Iterable<Symbol> {
         table[symbol.name] = symbol
     }
 
-    fun toArray(): Array<Symbol> {
-        return Array(list.size) { i -> list[i] }
-    }
-
-    override fun iterator(): Iterator<Symbol> {
-        return list.iterator()
-    }
+    override fun iterator(): Iterator<Symbol> = list.iterator()
 }

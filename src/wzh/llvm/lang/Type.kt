@@ -12,9 +12,9 @@ class IntegerType(val bit: Int) : Type() {
         return bit == other.bit
     }
 
-    override fun hashCode(): Int { return bit }
+    override fun hashCode() = bit.hashCode()
 
-    override fun toString(): String { return "i$bit" }
+    override fun toString() = "i$bit"
 }
 
 class PointerType(val target: Type) : Type() {
@@ -23,9 +23,9 @@ class PointerType(val target: Type) : Type() {
         return target == other.target
     }
 
-    override fun hashCode(): Int { return target.hashCode() }
+    override fun hashCode() = target.hashCode()
 
-    override fun toString(): String { return "${target}*"}
+    override fun toString() = "${target}*"
 }
 
 interface Typed {

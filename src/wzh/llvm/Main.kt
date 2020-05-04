@@ -1,5 +1,6 @@
 package wzh.llvm
 
+import wzh.llvm.analysis.VarChecker
 import wzh.llvm.parse.Builder
 import wzh.llvm.parse.Lexer
 import wzh.llvm.parse.Parser
@@ -16,6 +17,8 @@ object Main {
             val module = builder.build()
             val plotter = Plotter(module)
             plotter.plot("out")
+            val checker = VarChecker()
+            checker.check(module)
         } catch (e: Exception) {
             e.printStackTrace()
         }
