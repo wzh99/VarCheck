@@ -4,89 +4,107 @@ import wzh.llvm.lang.*
 import java.util.*
 
 // Check invalid use of variables, including:
-// For a register variable, use without define.
-// For a stack variable, load without store.
+// Using a register variable without first defining it.
+// Loading from a pointer to stack variable without first storing to it.
 class VarChecker {
 
     fun check(module: Module) {
         println("Checking ${module.name}")
         module.func.forEach(this::checkFunc)
+        println("Finished")
     }
 
     private lateinit var scope: Scope
-    private lateinit var defined: HashMap<BasicBlock, DataFlowValue>
-    private lateinit var stored: HashMap<BasicBlock, DataFlowValue>
+
+    // Register variables that have been defined
+    private lateinit var defined: HashMap<BasicBlock, DefinedList>
+
+    // Stack variable pointers that have been stored
+    private lateinit var stored: HashMap<BasicBlock, StoredList>
 
     private fun checkFunc(func: Func) {
         // Initialize data flow values
         scope = func.scope
-        val size = scope.size
-        defined = func.blocks.associateWith { block ->
-            val transfer = BitVector(size)
-            setDefined(transfer, block)
-            val inVal = BitVector(size)
-            if (block == func.entry)
-                func.param.forEach { param -> inVal[scope[param]] = true }
-            DataFlowValue(size, transfer, inVal)
+        val setSize = scope.size
+        defined = func.associateWith { block ->
+            if (block == func.entry) {
+                val entryVal = BitVector(setSize)
+                func.param.forEach { p -> entryVal[scope[p]] = true }
+                DefinedList(block, setSize, scope, inVal = entryVal)
+            } else
+                DefinedList(block, setSize, scope)
         } as HashMap
-        stored = func.blocks.associateWith { block ->
-            val transfer = BitVector(size)
-            setStored(transfer, block)
-            DataFlowValue(size, transfer)
+        stored = func.associateWith { block ->
+            StoredList(block, setSize, scope)
         } as HashMap
 
         // Run worklist algorithm
-        val work = ArrayDeque(arrayListOf(func.entry))
-        while (work.isNotEmpty()) {
-            // Record previous data flow values
+        val work = ArrayDeque<BasicBlock>()
+        work.add(func.entry)
+        while (work.size > 0) {
             val block = work.pollFirst()
-            val prevDefOut = defined[block]!!.outVal
-            val predStOut = stored[block]!!.outVal
-
-            // Update data flow values in this iteration
-            val defVal = defined[block]!!
-            val stVal = stored[block]!!
-            if (block != func.entry) {
-                defVal.inVal = block.pred
-                        .map { pred -> defined[pred]!!.outVal }
-                        .fold(!BitVector(size), BitVector::and) // meet operator: intersection
-                stVal.inVal = block.pred
-                        .map { pred -> stored[pred]!!.outVal }
-                        .fold(!BitVector(size), BitVector::and)
-            }
-            defVal.update()
-            stVal.update()
-
-            // Add successors to list
-            if (prevDefOut == defVal.outVal && predStOut == stVal.outVal) continue
+            val defFlow = defined[block]!!
+            val prevDefOut = defFlow.outVal.clone()
+            defFlow.converge(defined)
+            defFlow.transfer()
+            val stFlow = stored[block]!!
+            val prevStOut = stFlow.outVal.clone()
+            stFlow.converge(stored)
+            stFlow.transfer()
+            if (prevDefOut == defFlow.outVal && prevStOut == stFlow.outVal)
+                continue
             block.succ.forEach { succ -> work.addLast(succ) }
         }
-    }
 
-    private fun setDefined(vec: BitVector, block: BasicBlock) {
-        block.inst.forEach { inst ->
-            if (inst.def != null) vec[scope[inst.def!!]] = true
+        // Check invalid use of variables
+        func.forEach { block ->
+            val defFlow = defined[block]!!
+            val stFlow = stored[block]!!
+            block.forEachIndexed { i, inst ->
+                inst.use.forEach { use ->
+                    if (!defFlow.values[i][scope[use]])
+                        report(block, inst, use, "used without defined before")
+                }
+                if (inst is Load && !stFlow.values[i][scope[inst.src]])
+                    report(block, inst, inst.src, "loaded without stored before")
+            }
         }
     }
 
-    private fun setStored(vec: BitVector, block: BasicBlock) {
-        block.inst.forEach { inst ->
-            if (inst is Store) vec[scope[inst.dst]]
-        }
+    private fun report(block: BasicBlock, inst: Instruction, sym: Symbol, msg: String) {
+        println("Block $block, instruction $inst: Variable $sym $msg.")
     }
 }
 
-private class DataFlowValue(size: Int, val transfer: BitVector,
-                            var inVal: BitVector = BitVector(size)) {
-    var outVal = !BitVector(size)
+private class DefinedList(block: BasicBlock, setSize: Int, private val scope: Scope,
+                          inVal: BitVector = BitVector(setSize))
+    : Flow(block, setSize, inVal, outVal = !BitVector(setSize)) {
 
-    init {
-        if (size != transfer.size)
-            throw IllegalArgumentException()
+    override fun transfer() {
+        block.inst.forEachIndexed { i, inst ->
+            val next = values[i].clone()
+            if (inst.def != null)
+                next[scope[inst.def!!]] = true
+            values[i + 1] = next
+        }
     }
 
-    // Apply transfer function
-    fun update() {
-        outVal = inVal or transfer
+    override val meet = BitVector::and
+    override val initial = !BitVector(setSize)
+}
+
+private class StoredList(block: BasicBlock, setSize: Int, private val scope: Scope)
+    : Flow(block, setSize, inVal = BitVector(setSize), outVal = !BitVector(setSize)) {
+
+    override fun transfer() {
+        block.inst.forEachIndexed { i, inst ->
+            val next = values[i].clone()
+            if (inst is Store)
+                next[scope[inst.dst]] = true
+            values[i + 1] = next
+        }
     }
+
+    override val meet = BitVector::and
+    override val initial = !BitVector(setSize)
 }

@@ -80,7 +80,7 @@ class Builder(node: AstNode) {
     private fun visitLoadExpr(dstTok: Token, expr: LoadExpr): Load {
         val type = visitType(expr.type)
         val dst = visitLocalId(dstTok, type)
-        val src = visitTypedOperand(expr.src)
+        val src = visitTypedOperand(expr.src) as Symbol
         return Load(dst, type, src)
     }
 

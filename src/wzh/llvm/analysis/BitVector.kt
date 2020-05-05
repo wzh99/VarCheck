@@ -43,7 +43,9 @@ class BitVector(val size: Int, private val words: LongArray) : Iterable<Boolean>
         return toString() == other.toString()
     }
 
-    fun clone() = BitVector(size, words)
+    override fun hashCode() = toString().hashCode()
+
+    fun clone() = BitVector(size, words.clone())
 
     override fun toString() =
             reversed().joinToString(separator = "") { b -> if (b) "1" else "0" }
@@ -53,7 +55,6 @@ class BitVector(val size: Int, private val words: LongArray) : Iterable<Boolean>
     private fun wordIndex(index: Int) = index / Long.SIZE_BITS
 
     private fun bitIndex(index: Int) = index % Long.SIZE_BITS
-
 }
 
 class BitIterator(private val vec: BitVector) : Iterator<Boolean> {
