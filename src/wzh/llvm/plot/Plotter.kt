@@ -13,12 +13,16 @@ class Plotter(private val module: Module) {
 
     fun plot(dir: String) {
         // Compile to LaTeX code
-        val moduleStr = module.func.map(this::plotFunc).fold("", String::plus)
-        val fileStr = MODULE_TEMPLATE.replace(MODULE_INSERT, moduleStr)
+        val builder = StringBuilder()
+        module.func.forEach { f -> builder.append(plotFunc(f)) }
+        val fileStr = MODULE_TEMPLATE.replace(MODULE_INSERT, builder.toString())
 
         // Create file in given path
-        val path = Path.of(dir, fileName)
-        val file = path.toFile()
+        val dirPath = Path.of(dir)
+        val dirFile = dirPath.toFile()
+        if (!dirFile.exists()) dirFile.mkdir()
+        val filePath = dirPath.resolve(fileName)
+        val file = filePath.toFile()
         val writer = FileWriter(file)
         writer.write(fileStr)
         writer.close()
@@ -58,7 +62,8 @@ class Plotter(private val module: Module) {
                     if (l == 0) { // entry node
                         "\\node[block](${node.name}){$text};"
                     } else {
-                        val aboveMaxHeightBb = levels[l - 1].maxBy { b -> nodes[b]!!.height }!!
+                        val aboveMaxHeightBb = levels[l - 1]
+                                .maxBy { b -> nodes[b]!!.height }!!
                         val aboveMaxHeight = nodes[aboveMaxHeightBb]!!.height
                         val aboveBb = levels[l - 1][i]
                         val aboveNode = nodes[aboveBb]!!

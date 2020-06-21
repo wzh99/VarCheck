@@ -31,7 +31,7 @@ abstract class Flow(protected val block: BasicBlock, private val setSize: Int,
     // Define meet operator of values
     abstract val meet: (BitVector, BitVector) -> BitVector
 
-    // What is the initial value when applying meet operations
+    // Initial value for applying meet operations
     abstract val initial: BitVector
 
     // Confluence of values in predecessors

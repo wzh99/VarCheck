@@ -5,7 +5,7 @@ target triple = "x86_64-apple-macosx10.15.0"
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define i32 @two() #0 {
 entry:
-  ret i32 2
+  ret i32 %a
 }
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable

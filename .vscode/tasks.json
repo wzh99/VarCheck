@@ -9,7 +9,7 @@
 				"-S",
 				"-emit-llvm",
 				"-fno-discard-value-names",
-				"${fileBasename}",
+				"${fileBasename}"
 			],
 			"options": {
 				"cwd": "${fileDirname}"

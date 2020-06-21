@@ -14,43 +14,40 @@ class VarChecker {
         println("Finished")
     }
 
-    private lateinit var scope: Scope
-
-    // Register variables that have been defined
-    private lateinit var defined: HashMap<BasicBlock, DefinedList>
-
-    // Stack variable pointers that have been stored
-    private lateinit var stored: HashMap<BasicBlock, StoredList>
-
     private fun checkFunc(func: Func) {
         // Initialize data flow values
-        scope = func.scope
+        val scope = func.scope
         val setSize = scope.size
-        defined = func.associateWith { block ->
+        val defined = func.associateWith { block ->
             if (block == func.entry) {
                 val entryVal = BitVector(setSize)
                 func.param.forEach { p -> entryVal[scope[p]] = true }
-                DefinedList(block, setSize, scope, inVal = entryVal)
+                DefinedFlow(block, setSize, scope, inVal = entryVal)
             } else
-                DefinedList(block, setSize, scope)
+                DefinedFlow(block, setSize, scope)
         } as HashMap
-        stored = func.associateWith { block ->
-            StoredList(block, setSize, scope)
+        val stored = func.associateWith { block ->
+            StoredFlow(block, setSize, scope)
         } as HashMap
 
         // Run worklist algorithm
         val work = ArrayDeque<BasicBlock>()
         work.add(func.entry)
         while (work.size > 0) {
+            // Compute flow of defined variables
             val block = work.pollFirst()
             val defFlow = defined[block]!!
             val prevDefOut = defFlow.outVal.clone()
             defFlow.converge(defined)
             defFlow.transfer()
+
+            // Compute flow of stored variables
             val stFlow = stored[block]!!
             val prevStOut = stFlow.outVal.clone()
             stFlow.converge(stored)
             stFlow.transfer()
+
+            // Add successors to worklist
             if (prevDefOut == defFlow.outVal && prevStOut == stFlow.outVal)
                 continue
             block.succ.forEach { succ -> work.addLast(succ) }
@@ -63,20 +60,21 @@ class VarChecker {
             block.forEachIndexed { i, inst ->
                 inst.use.forEach { use ->
                     if (!defFlow.values[i][scope[use]])
-                        report(block, inst, use, "used without defined before")
+                        report(func, block, inst, use, "used without defined before")
                 }
                 if (inst is Load && !stFlow.values[i][scope[inst.src]])
-                    report(block, inst, inst.src, "loaded without stored before")
+                    report(func, block, inst, inst.src, "loaded without stored before")
             }
         }
     }
 
-    private fun report(block: BasicBlock, inst: Instruction, sym: Symbol, msg: String) {
-        println("Block $block, instruction $inst: Variable $sym $msg.")
+    private fun report(func: Func, block: BasicBlock, inst: Instruction, sym: Symbol,
+                       msg: String) {
+        println("At @${func.name}, $block, `$inst`: $sym $msg")
     }
 }
 
-private class DefinedList(block: BasicBlock, setSize: Int, private val scope: Scope,
+private class DefinedFlow(block: BasicBlock, setSize: Int, private val scope: Scope,
                           inVal: BitVector = BitVector(setSize))
     : Flow(block, setSize, inVal, outVal = !BitVector(setSize)) {
 
@@ -89,11 +87,11 @@ private class DefinedList(block: BasicBlock, setSize: Int, private val scope: Sc
         }
     }
 
-    override val meet = BitVector::and
+    override val meet = BitVector::and // set intersection
     override val initial = !BitVector(setSize)
 }
 
-private class StoredList(block: BasicBlock, setSize: Int, private val scope: Scope)
+private class StoredFlow(block: BasicBlock, setSize: Int, private val scope: Scope)
     : Flow(block, setSize, inVal = BitVector(setSize), outVal = !BitVector(setSize)) {
 
     override fun transfer() {
@@ -105,6 +103,6 @@ private class StoredList(block: BasicBlock, setSize: Int, private val scope: Sco
         }
     }
 
-    override val meet = BitVector::and
+    override val meet = BitVector::and // set intersection
     override val initial = !BitVector(setSize)
 }
